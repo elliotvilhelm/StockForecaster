@@ -32,4 +32,4 @@ def multi_step_plot(history, true_future, prediction, step):
              label='Predicted Future')
   plt.legend(loc='upper left')
   plt.grid(True)
-  plt.show()
+  return plt
