@@ -23,6 +23,26 @@ def univariate_data(dataset, start_index, end_index, history_size, target_size):
     labels.append(dataset[i+target_size])
   return np.array(data), np.array(labels)
 
+def multivariate_data(dataset, target, start_index, end_index, history_size,
+                      target_size, step, single_step=False):
+  data = []
+  labels = []
+
+  start_index = start_index + history_size
+  if end_index is None:
+    end_index = len(dataset) - target_size
+
+  for i in range(start_index, end_index):
+    indices = range(i-history_size, i, step)
+    data.append(dataset[indices])
+
+    if single_step:
+      labels.append(target[i+target_size])
+    else:
+      labels.append(target[i:i+target_size])
+
+  return np.array(data), np.array(labels)
+
 
 def create_time_steps(length):
   return list(range(-length, 0))
@@ -70,6 +90,28 @@ def split(equity_data):
   x_val_uni, y_val_uni = univariate_data(uni_data, train_split, None, history_size, target_distance)
 
   return x_train_uni, y_train_uni, x_val_uni, y_val_uni
+
+
+def split_multivariate(dataset):
+  history_size = 20
+  target_distance = 1
+  step = 1
+  train_split = int(len(dataset) * 0.7)
+
+  data_mean = dataset[:train_split].mean(axis=0)
+  data_std = dataset[:train_split].std(axis=0)
+  dataset = (dataset-data_mean)/data_std
+
+  x_train_single, y_train_single = multivariate_data(dataset, dataset[:, 1], 0,
+                                                   train_split, history_size,
+                                                   target_distance, step,
+                                                   single_step=True)
+  x_val_single, y_val_single = multivariate_data(dataset, dataset[:, 1],
+                                                train_split, None, history_size,
+                                                target_distance, step,
+                                                single_step=True)
+  
+  return x_train_single, y_train_single, x_val_single, y_val_single
 
 
 def baseline(history):
