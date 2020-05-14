@@ -2,24 +2,10 @@ from market import EquityData
 from models.lstm import split, split_multivariate, show_plot
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from utils import plot_train_history
 
 
-def plot_train_history(history, title):
-  loss = history.history['loss']
-  val_loss = history.history['val_loss']
-
-  epochs = range(len(loss))
-
-  plt.figure()
-
-  plt.plot(epochs, loss, 'b', label='Training loss')
-  plt.plot(epochs, val_loss, 'r', label='Validation loss')
-  plt.title(title)
-  plt.legend()
-  plt.grid(True)
-  plt.show()
-
-
+tf.random.set_seed(42)
 
 BATCH_SIZE = 256
 BUFFER_SIZE = 10000
@@ -34,16 +20,15 @@ e = EquityData('data/SPY.csv', 'SPY')
 features = e.data[features_considered]
 features.index = e.date()
 
+step = 1
+history_size = 20
+target_distance = 7
 
 features.plot(subplots=True)
 plt.show()
 
 dataset = features.values
-
-
-x_train_single, y_train_single, x_val_single, y_val_single = split_multivariate(
-    dataset)
-
+x_train_single, y_train_single, x_val_single, y_val_single = split_multivariate(dataset, history_size, target_distance, step, single_step=True)
 print('Single window of past history : {}'.format(x_train_single[0].shape))
 
 train_data_single = tf.data.Dataset.from_tensor_slices(

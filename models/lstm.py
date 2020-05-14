@@ -3,8 +3,6 @@ from market import EquityData
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 tf.random.set_seed(42)
 
@@ -92,9 +90,9 @@ def split(equity_data):
   return x_train_uni, y_train_uni, x_val_uni, y_val_uni
 
 
-def split_multivariate(dataset):
+def split_multivariate(dataset, history_size, target_distance, step, single_step=False):
   history_size = 20
-  target_distance = 1
+  target_distance = 7
   step = 1
   train_split = int(len(dataset) * 0.7)
 
@@ -105,11 +103,11 @@ def split_multivariate(dataset):
   x_train_single, y_train_single = multivariate_data(dataset, dataset[:, 1], 0,
                                                    train_split, history_size,
                                                    target_distance, step,
-                                                   single_step=True)
+                                                   single_step=single_step)
   x_val_single, y_val_single = multivariate_data(dataset, dataset[:, 1],
                                                 train_split, None, history_size,
                                                 target_distance, step,
-                                                single_step=True)
+                                                single_step=single_step)
   
   return x_train_single, y_train_single, x_val_single, y_val_single
 

@@ -2,6 +2,7 @@ from market import EquityData
 from models.lstm import split, show_plot
 import tensorflow as tf
 
+tf.random.set_seed(42)
 
 BATCH_SIZE = 256
 BUFFER_SIZE = 10000
