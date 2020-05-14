@@ -91,9 +91,6 @@ def split(equity_data):
 
 
 def split_multivariate(dataset, history_size, target_distance, step, single_step=False):
-  history_size = 20
-  target_distance = 7
-  step = 1
   train_split = int(len(dataset) * 0.7)
 
   data_mean = dataset[:train_split].mean(axis=0)

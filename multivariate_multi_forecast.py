@@ -6,15 +6,15 @@ import tensorflow as tf
 from utils import plot_train_history, multi_step_plot
 
 
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 BUFFER_SIZE = 10000
 
 EVALUATION_INTERVAL = 500
-EPOCHS = 1
+EPOCHS = 10
 
 step = 1
 history_size = 90
-target_distance = 7
+target_distance = 14
 
 features_considered = ['Close', 'Volume']
 
@@ -24,7 +24,7 @@ features = e.data[features_considered]
 features.index = e.date()
 
 
-features.plot(subplots=True)
+# features.plot(subplots=True)
 # plt.show()
 
 dataset = features.values
@@ -40,8 +40,6 @@ val_data_multi = tf.data.Dataset.from_tensor_slices((x_val_multi, y_val_multi))
 val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 
-for x, y in train_data_multi.take(1):
-  multi_step_plot(x[0], y[0], np.array([0]), step)
 
 multi_step_model = tf.keras.models.Sequential()
 multi_step_model.add(tf.keras.layers.LSTM(32,
@@ -53,16 +51,19 @@ multi_step_model.add(tf.keras.layers.Dense(target_distance))
 multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(clipvalue=1.0), loss='mae')
 
 
+val_callback = tf.keras.callbacks.ModelCheckpoint(
+    'checkpoints/multivariate_multi_model', monitor='val_loss', verbose=0, save_best_only=True,
+    save_weights_only=False, mode='auto', save_freq='epoch'
+)
+
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_data_multi,
-                                          validation_steps=50)
+                                          validation_steps=50, callbacks=[val_callback])
 
-plot_train_history(multi_step_history, 'Multi-Step Training and validation loss')
+# plot_train_history(multi_step_history, 'Multi-Step Training and validation loss')
 
 for x, y in val_data_multi.take(3):
-  print(x[0])
-  print(x[0].shape)
-  multi_step_plot(x[0], y[0], multi_step_model.predict(x)[0], step)
+  multi_step_plot(x[0], y[0], multi_step_model.predict(x)[0], step).show()
 
 multi_step_model.save('saved_models/multivariate_multi_model')
