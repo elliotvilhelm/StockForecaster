@@ -48,4 +48,3 @@ class EquityData:
         fig.subplots_adjust(bottom=0.3)
         plt.plot(df)
         plt.show()
-    

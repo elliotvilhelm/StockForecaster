@@ -41,8 +41,11 @@ data = np.reshape(data, (data.shape[1], data.shape[2]))
 # data = data_no_transform
 # y = y_no_transform
 
+print(data)
+print(y)
+print(y_no_transform)
 plt.plot(num_in, np.array(data[:, 0]), label='History')
-plt.plot(np.arange(num_out)/step, np.array(y[0]), 'ro',
+plt.plot(np.arange(num_out)/step, np.array(y[0]), '-',
             label='Predicted Future')
 plt.legend(loc='upper left')
 plt.grid(True)

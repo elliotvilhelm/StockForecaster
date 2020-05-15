@@ -25,10 +25,10 @@ def multi_step_plot(history, true_future, prediction, step):
   num_out = len(true_future)
 
   plt.plot(num_in, np.array(history[:, 0]), label='History')
-  plt.plot(np.arange(num_out)/step, np.array(true_future), 'bo',
+  plt.plot(np.arange(num_out)/step, np.array(true_future), 'gx',
            label='True Future')
   if prediction.any():
-    plt.plot(np.arange(num_out)/step, np.array(prediction), 'ro',
+    plt.plot(np.arange(num_out)/step, np.array(prediction), 'rx',
              label='Predicted Future')
   plt.legend(loc='upper left')
   plt.grid(True)

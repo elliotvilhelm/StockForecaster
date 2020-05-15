@@ -22,7 +22,7 @@ def univariate_data(dataset, start_index, end_index, history_size, target_size):
   return np.array(data), np.array(labels)
 
 def multivariate_data(dataset, target, start_index, end_index, history_size,
-                      target_size, step, single_step=False):
+                      target_size, step, single_step=False, classification=False):
   data = []
   labels = []
 
@@ -35,7 +35,14 @@ def multivariate_data(dataset, target, start_index, end_index, history_size,
     data.append(dataset[indices])
 
     if single_step:
-      labels.append(target[i+target_size])
+      if classification:
+        if target[i] <= target[i+target_size]: # went up
+          labels.append(1)
+        else:
+          labels.append(0)
+
+      else:
+        labels.append(target[i+target_size])
     else:
       labels.append(target[i:i+target_size])
 
@@ -90,21 +97,22 @@ def split(equity_data):
   return x_train_uni, y_train_uni, x_val_uni, y_val_uni
 
 
-def split_multivariate(dataset, history_size, target_distance, step, single_step=False):
+def split_multivariate(dataset, history_size, target_distance, step, single_step=False, classification=False):
   train_split = int(len(dataset) * 0.7)
 
   data_mean = dataset[:train_split].mean(axis=0)
   data_std = dataset[:train_split].std(axis=0)
   dataset = (dataset-data_mean)/data_std
 
-  x_train_single, y_train_single = multivariate_data(dataset, dataset[:, 1], 0,
+
+  x_train_single, y_train_single = multivariate_data(dataset, dataset[:, 0], 0,
                                                    train_split, history_size,
                                                    target_distance, step,
-                                                   single_step=single_step)
-  x_val_single, y_val_single = multivariate_data(dataset, dataset[:, 1],
+                                                   single_step=single_step, classification=classification)
+  x_val_single, y_val_single = multivariate_data(dataset, dataset[:, 0],
                                                 train_split, None, history_size,
                                                 target_distance, step,
-                                                single_step=single_step)
+                                                single_step=single_step, classification=classification)
   
   return x_train_single, y_train_single, x_val_single, y_val_single
 
