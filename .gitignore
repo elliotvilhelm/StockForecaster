@@ -3,3 +3,4 @@ __pycache__
 *.pyc
 checkpoints
 saved_models
+logs/

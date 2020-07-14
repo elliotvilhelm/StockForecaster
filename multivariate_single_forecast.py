@@ -1,128 +1,119 @@
-from market import EquityData
-from models.lstm import split, split_multivariate, show_plot
+# INSERT COPYRIGHT HERE
+
+# python modules
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from utils import plot_train_history
-from technical_analysis import moving_average
-
-
-import pandas as pd
 from ta.utils import dropna
-from ta.volatility import BollingerBands
-from ta import add_all_ta_features
 import pyfinancialdata
+from datetime import datetime as dt 
 
+# local modules
+from market import EquityData
+from models.lstm import split, split_multivariate, show_plot
+from utils import plot_train_history
+from config import BATCH_SIZE, BUFFER_SIZE, \
+                   EPOCHS, CLASSIFICATION, \
+                   HISTORY_SIZE, TARGET_DIS, \
+                   STEP, FEATURES, DATA_DIR, \
+                   DATA_SYM
 
-
+# use seed 
 tf.random.set_seed(42)
 
-BATCH_SIZE = 128
-BUFFER_SIZE = 10000
-EPOCHS = 10
-CLASSIFICATION = True
+def get_lstm():
+  """
+  Keras LSTM Architecture 
+  """
+  ssm = tf.keras.models.Sequential()
 
-step = 1
-history_size = 180
-target_distance = 6
+  ssm.add(tf.keras.layers.LSTM(256, return_sequences=True,
+                                input_shape=xt.shape[-2:]))
 
-features_considered = ['Close', 'Volume', 'MA_short', 'MA_long', 'Wilders_EMA', 'bb_bbm', 'bb_bbh', 'bb_bbl', 'bb_bbhi', 'bb_bbli']
-features_considered = ['Close', 'Volume', 'Wilders_EMA', 'bb_bbm', 'bb_bbh', 'bb_bbl',
-                       'bb_bbhi', 'bb_bbli', 'trend_adx', 'momentum_stoch_signal', 
-                       'trend_trix', 'trend_ichimoku_a', 'momentum_kama', 'momentum_tsi', 
-                       'volatility_kcli']
-features_considered = ['close', 'MA_long', 'MA_short']
-# features_considered = ['Close', 'MA_short', 'MA_long', 'Wilders_EMA']
-# Initialize Bollinger Bands Indicator
-e = EquityData('data/SPY.csv', 'SPY')
-data = pyfinancialdata.get_multi_year(provider='histdata', instrument='SPXUSD', years=[2016, 2017, 2018], time_group='10min')
-e.data = data
-indicator_bb = BollingerBands(close=e.data['close'], n=20, ndev=2)
-# e.data = add_all_ta_features(e.data, open="open", high="high", low="low", close="close")
+  ssm.add(tf.keras.layers.LSTM(256, return_sequences=True))
 
-e.data['MA_long'] = e.data['close'].rolling(window=52).mean()
-e.data['MA_short'] = e.data['close'].rolling(window=7).mean()
-# e.data['MA_short'] = moving_average(e, window=5)
-# e.data['Wilders_EMA'] = e.close().ewm(alpha=1/history_size, adjust=False).mean()
+  ssm.add(tf.keras.layers.LSTM(128))
 
-# # Add Bollinger Bands features
-# e.data['bb_bbm'] = indicator_bb.bollinger_mavg()
-# e.data['bb_bbh'] = indicator_bb.bollinger_hband()
-# e.data['bb_bbl'] = indicator_bb.bollinger_lband()
-# # Add Bollinger Band high indicator
-# e.data['bb_bbhi'] = indicator_bb.bollinger_hband_indicator()
-# # Add Bollinger Band low indicator
-# e.data['bb_bbli'] = indicator_bb.bollinger_lband_indicator()
-# e.data = e.data[21:]
-print(list(e.data))
-# import pdb
-# pdb.set_trace()
+  ssm.add(tf.keras.layers.Dense(64))
 
-EVALUATION_INTERVAL = int(e.data.shape[0]/BATCH_SIZE) * 1
-features = e.data[features_considered]
-features.index = e.data.index
-# assert(list(features)[0] == 'Close')
-features = features.dropna()
-features = features[26:]
+  ssm.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 
+  ssm.compile(optimizer=tf.keras.optimizers.Adam(lr=0.001), 
+              loss=tf.keras.losses.BinaryCrossentropy(), 
+              metrics=['accuracy'])
+  return ssm
 
-# features.plot(subplots=True)
-# plt.show()
+if __name__ == "__main__":
+  # construct data and get additional info 
+  e = EquityData(DATA_DIR, DATA_SYM)
+  data = pyfinancialdata.get_multi_year(provider='histdata', instrument='SPXUSD', years=[2016, 2017, 2018], time_group='10min')
+  e.data = data
 
-dataset = features.values
-x_train_single, y_train_single, x_val_single, y_val_single = split_multivariate(dataset, history_size, target_distance,
-                                                                                step, single_step=True, classification=CLASSIFICATION)
+  # add MACD
+  e.data['MA_long'] = e.data['close'].rolling(window=52).mean()
+  e.data['MA_short'] = e.data['close'].rolling(window=7).mean()
 
-print('Single window of past history : {}'.format(x_train_single[0].shape))
+  # evaluation interval
+  window = int(e.data.shape[0]/BATCH_SIZE) * 1
+  
+  # pick selected features
+  features = e.data[FEATURES]
+  
+  # cleanse
+  features.index = e.data.index
+  features = features.dropna()
+  features = features[26:]
 
-train_data_single = tf.data.Dataset.from_tensor_slices(
-    (x_train_single, y_train_single))
-train_data_single = train_data_single.cache().shuffle(
-    BUFFER_SIZE).batch(BATCH_SIZE).repeat()
+  # to numpy
+  dataset = features.values
 
-val_data_single = tf.data.Dataset.from_tensor_slices(
-    (x_val_single, y_val_single))
-val_data_single = val_data_single.batch(BATCH_SIZE).repeat()
+  # get validation and training data
+  xt, yt, xv, yv = split_multivariate(dataset, 
+                                      HISTORY_SIZE, 
+                                      TARGET_DIS,
+                                      STEP, 
+                                      single_step=True, 
+                                      classification=CLASSIFICATION)
 
-single_step_model = tf.keras.models.Sequential()
+  # construct datasets
+  t_ds = tf.data.Dataset.from_tensor_slices((xt, yt))
+  t_ds = t_ds.cache().shuffle(
+      BUFFER_SIZE).batch(BATCH_SIZE).repeat()
+  v_ds = tf.data.Dataset.from_tensor_slices((xv, yv))
+  v_ds = v_ds.batch(BATCH_SIZE).repeat()
 
-single_step_model.add(tf.keras.layers.LSTM(32, return_sequences=True,
-                                           input_shape=x_train_single.shape[-2:]))
-# single_step_model.add(tf.keras.layers.LSTM(32, input_shape=x_train_single.shape[-2:]))
+  # validation callback
+  v_cb = tf.keras.callbacks.ModelCheckpoint(
+      'checkpoints/multivariate_single_model', monitor='val_accuracy', verbose=1, save_best_only=True,
+      save_weights_only=False, mode='auto', save_freq='epoch'
+  )
+  
+  # tensorboard callback
+  logdir = "logs/scalars/{}".format(dt.today())
+  ts_cb = tf.keras.callbacks.TensorBoard(log_dir=logdir)
 
-single_step_model.add(tf.keras.layers.LSTM(16, activation='relu'))
-if CLASSIFICATION:
-  single_step_model.add(tf.keras.layers.Dense(16, activation='relu'))
-  single_step_model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
-else:
-  single_step_model.add(tf.keras.layers.Dense(1))
+  # get model
+  ssm = get_lstm()
 
-# single_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(), loss='mae')
-single_step_model.compile(optimizer=tf.keras.optimizers.Adam(), loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
+  # run trial
+  history = ssm.fit(t_ds, epochs=EPOCHS,
+                    steps_per_epoch=window,
+                    validation_data=v_ds,
+                    validation_steps=50, 
+                    callbacks=[v_cb, ts_cb])
 
-val_callback = tf.keras.callbacks.ModelCheckpoint(
-    'checkpoints/multivariate_single_model', monitor='val_accuracy', verbose=1, save_best_only=True,
-    save_weights_only=False, mode='auto', save_freq='epoch'
-)
+  # TODO plot results
+  # plot_train_history(single_step_history,
+  #                   'Single Step Training and validation loss')
 
-single_step_history = single_step_model.fit(train_data_single, epochs=EPOCHS,
-                                            steps_per_epoch=EVALUATION_INTERVAL,
-                                            validation_data=val_data_single,
-                                            validation_steps=50, callbacks=[val_callback])
-
-
-plot_train_history(single_step_history,
-                   'Single Step Training and validation loss')
-
-
-for x, y in val_data_single.take(10):
-  y_pred = single_step_model.predict(x)[0]
-  print(f"prediction: {y_pred}")
-  if CLASSIFICATION:
-    if y_pred >= 0.5:
-      y_pred = 1
-    else:
-      y_pred = 0
-  plot = show_plot([x[0][:, 0].numpy(), y[0].numpy(),
-                    y_pred], target_distance,
-                   'Single Step Prediction')
-  plot.show()
+  # for x, y in val_data_single.take(10):
+  #   y_pred = ssm.predict(x)[0]
+  #   print(f"prediction: {y_pred}")
+  #   if CLASSIFICATION:
+  #     if y_pred >= 0.5:
+  #       y_pred = 1
+  #     else:
+  #       y_pred = 0
+  #   plot = show_plot([x[0][:, 0].numpy(), y[0].numpy(),
+  #                     y_pred], TARGET_DIS,
+  #                   'Single Step Prediction')
+  #   plot.show()
