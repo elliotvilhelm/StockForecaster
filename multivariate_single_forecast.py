@@ -1,5 +1,3 @@
-# INSERT COPYRIGHT HERE
-
 # python modules
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -24,10 +22,10 @@ def get_lstm():
   """
   Keras LSTM Architecture 
   """
+  shape = (HISTORY_SIZE, len(FEATURES))
   ssm = tf.keras.models.Sequential()
-
   ssm.add(tf.keras.layers.LSTM(64, return_sequences=True,
-                                input_shape=xt.shape[-2:]))
+                                input_shape=shape))
 
   ssm.add(tf.keras.layers.LSTM(32, return_sequences=True))
 
@@ -45,7 +43,10 @@ def get_lstm():
 if __name__ == "__main__":
   # construct data and get additional info 
   e = EquityData(DATA_DIR, DATA_SYM)
-  data = pyfinancialdata.get_multi_year(provider='histdata', instrument='SPXUSD', years=[2016, 2017, 2018], time_group='10min')
+  data = pyfinancialdata.get_multi_year(provider='histdata', 
+                                        instrument='SPXUSD', 
+                                        years=[2016, 2017, 2018], 
+                                        time_group='10min')
   e.data = data
 
   # add MACD
@@ -57,11 +58,6 @@ if __name__ == "__main__":
   
   # pick selected features
   features = e.data[FEATURES]
-  
-  # cleanse
-  features.index = e.data.index
-  features = features.dropna()
-  features = features[26:]
 
   # to numpy
   dataset = features.values
@@ -86,7 +82,7 @@ if __name__ == "__main__":
       'checkpoints/multivariate_single_model', monitor='val_accuracy', verbose=1, save_best_only=True,
       save_weights_only=False, mode='auto', save_freq='epoch'
   )
-  
+
   # tensorboard callback
   logdir = "logs/scalars/{}".format(dt.today())
   ts_cb = tf.keras.callbacks.TensorBoard(log_dir=logdir)
@@ -100,20 +96,3 @@ if __name__ == "__main__":
                     validation_data=v_ds,
                     validation_steps=50, 
                     callbacks=[v_cb, ts_cb])
-
-  # TODO plot results
-  # plot_train_history(single_step_history,
-  #                   'Single Step Training and validation loss')
-
-  # for x, y in val_data_single.take(10):
-  #   y_pred = ssm.predict(x)[0]
-  #   print(f"prediction: {y_pred}")
-  #   if CLASSIFICATION:
-  #     if y_pred >= 0.5:
-  #       y_pred = 1
-  #     else:
-  #       y_pred = 0
-  #   plot = show_plot([x[0][:, 0].numpy(), y[0].numpy(),
-  #                     y_pred], TARGET_DIS,
-  #                   'Single Step Prediction')
-  #   plot.show()
