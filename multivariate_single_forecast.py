@@ -26,18 +26,18 @@ def get_lstm():
   """
   ssm = tf.keras.models.Sequential()
 
-  ssm.add(tf.keras.layers.LSTM(256, return_sequences=True,
+  ssm.add(tf.keras.layers.LSTM(64, return_sequences=True,
                                 input_shape=xt.shape[-2:]))
 
-  ssm.add(tf.keras.layers.LSTM(256, return_sequences=True))
+  ssm.add(tf.keras.layers.LSTM(32, return_sequences=True))
 
-  ssm.add(tf.keras.layers.LSTM(128))
+  ssm.add(tf.keras.layers.LSTM(16))
 
-  ssm.add(tf.keras.layers.Dense(64))
+  ssm.add(tf.keras.layers.Dense(8))
 
   ssm.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 
-  ssm.compile(optimizer=tf.keras.optimizers.Adam(lr=0.001), 
+  ssm.compile(optimizer=tf.keras.optimizers.Adam(lr=0.1), 
               loss=tf.keras.losses.BinaryCrossentropy(), 
               metrics=['accuracy'])
   return ssm
